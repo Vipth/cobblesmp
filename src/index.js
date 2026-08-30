@@ -134,7 +134,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     const command = commands.get(interaction.commandName);
     if (!command) return;
-    await command.execute(interaction);
+    await command.execute(interaction, { commands });
   } catch (err) {
     console.error(
       `[interaction] ${interaction.commandName ?? interaction.customId ?? 'unknown'}:`,

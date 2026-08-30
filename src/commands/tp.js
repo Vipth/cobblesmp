@@ -2,6 +2,8 @@ import { SlashCommandBuilder } from 'discord.js';
 import { assertTeleportDestination } from '../rcon.js';
 import { runAdminRcon, resolveTarget } from '../rconCommand.js';
 
+export const adminOnly = true;
+
 export const data = new SlashCommandBuilder()
   .setName('tp')
   .setDescription('Teleport a player to another player or to coordinates')

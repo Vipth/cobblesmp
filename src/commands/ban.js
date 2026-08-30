@@ -3,6 +3,8 @@ import { sanitizeReason, ValidationError } from '../rcon.js';
 import { isAdmin, resolveTarget, EPHEMERAL } from '../rconCommand.js';
 import { banEverywhere } from '../bansync.js';
 
+export const adminOnly = true;
+
 export const data = new SlashCommandBuilder()
   .setName('ban')
   .setDescription('Ban a player on both Minecraft and Discord')

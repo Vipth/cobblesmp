@@ -6,6 +6,8 @@ import { addToWhitelist } from '../whitelist.js';
 import { grantLinkedRole } from '../roles.js';
 import { isAdmin, audit, EPHEMERAL } from '../rconCommand.js';
 
+export const adminOnly = true;
+
 export const data = new SlashCommandBuilder()
   .setName('forcelink')
   .setDescription('Admin: link a Discord member to a Minecraft account')

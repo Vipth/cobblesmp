@@ -2,6 +2,8 @@ import { SlashCommandBuilder } from 'discord.js';
 import { sanitizeReason } from '../rcon.js';
 import { runAdminRcon, resolveTarget } from '../rconCommand.js';
 
+export const adminOnly = true;
+
 export const data = new SlashCommandBuilder()
   .setName('kick')
   .setDescription('Kick a player from the server')

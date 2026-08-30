@@ -1,6 +1,8 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { runAdminRcon, resolveTarget } from '../rconCommand.js';
 
+export const adminOnly = true;
+
 export const data = new SlashCommandBuilder()
   .setName('deop')
   .setDescription('Revoke operator status from a player')

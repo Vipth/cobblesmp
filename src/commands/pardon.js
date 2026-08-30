@@ -3,6 +3,8 @@ import { ValidationError } from '../rcon.js';
 import { isAdmin, resolveTarget, EPHEMERAL } from '../rconCommand.js';
 import { pardonEverywhere } from '../bansync.js';
 
+export const adminOnly = true;
+
 export const data = new SlashCommandBuilder()
   .setName('pardon')
   .setDescription('Unban a player on both Minecraft and Discord')

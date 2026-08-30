@@ -136,6 +136,7 @@ If the Pi runs 32-bit Raspberry Pi OS, add `linux/arm/v7` to `--platform`.
 ## Commands
 
 ### Everyone
+- `/help` — list the commands available to you (admins see the admin set too)
 - `/link <username>` — link your Minecraft account (whitelists you)
 - `/unlink` — remove your link (removes you from the whitelist)
 - `/whoami` — your linked account card (skin, online/banned status, link date)

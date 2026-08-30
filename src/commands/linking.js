@@ -2,6 +2,8 @@ import { SlashCommandBuilder } from 'discord.js';
 import { isAdmin, audit, EPHEMERAL } from '../rconCommand.js';
 import { isLinkingOpen, setLinkingOpen } from '../state.js';
 
+export const adminOnly = true;
+
 export const data = new SlashCommandBuilder()
   .setName('linking')
   .setDescription('Open or close new /link sign-ups')

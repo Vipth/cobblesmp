@@ -10,6 +10,8 @@ import { isAdmin, EPHEMERAL } from '../rconCommand.js';
 
 const PAGE_SIZE = 15;
 
+export const adminOnly = true;
+
 export const data = new SlashCommandBuilder()
   .setName('users')
   .setDescription('Admin: list every synced account');

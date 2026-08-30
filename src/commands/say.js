@@ -11,6 +11,8 @@ const COLOR_CHOICES = [
   'gray', 'dark_gray', 'black',
 ].map((c) => ({ name: c.replace(/_/g, ' '), value: c }));
 
+export const adminOnly = true;
+
 export const data = new SlashCommandBuilder()
   .setName('say')
   .setDescription('Broadcast a message in the server chat')

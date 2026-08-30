@@ -2,6 +2,8 @@ import { SlashCommandBuilder } from 'discord.js';
 import { assertItemId, clampCount } from '../rcon.js';
 import { runAdminRcon, resolveTarget } from '../rconCommand.js';
 
+export const adminOnly = true;
+
 export const data = new SlashCommandBuilder()
   .setName('give')
   .setDescription('Give an item to a player')

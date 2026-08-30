@@ -3,6 +3,8 @@ import { assertMcName } from '../rcon.js';
 import { isAdmin, runAdminRcon, EPHEMERAL } from '../rconCommand.js';
 import { reconcileWhitelist } from '../whitelist.js';
 
+export const adminOnly = true;
+
 export const data = new SlashCommandBuilder()
   .setName('whitelist')
   .setDescription('Manage the server whitelist')

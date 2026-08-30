@@ -5,6 +5,8 @@ import { removeFromWhitelist } from '../whitelist.js';
 import { revokeLinkedRole } from '../roles.js';
 import { isAdmin, audit, EPHEMERAL } from '../rconCommand.js';
 
+export const adminOnly = true;
+
 export const data = new SlashCommandBuilder()
   .setName('forceunlink')
   .setDescription("Admin: remove a member's Minecraft link")
