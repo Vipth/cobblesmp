@@ -19,6 +19,7 @@ import {
 } from './bansync.js';
 import { startWhitelistReconciler, stopWhitelistReconciler } from './whitelist.js';
 import { startRoleReconciler, stopRoleReconciler, linkedRoleEnabled } from './roles.js';
+import { startPresencePoller, stopPresencePoller } from './presence.js';
 import { isLinkingOpen } from './state.js';
 
 const client = new Client({
@@ -43,11 +44,13 @@ client.once(Events.ClientReady, async (c) => {
 
   await checkAdminRole(client);
   await checkLinkedRole(client);
+  await checkPresenceChannel(client);
 
   registerBanEvents(client);
   startBanPoller(client);
   startWhitelistReconciler(client);
   startRoleReconciler(client);
+  startPresencePoller(client);
   await audit(
     client,
     `✅ Bot online. Linking is ${isLinkingOpen() ? '🟢 open' : '🔴 closed'}.`,
@@ -101,6 +104,20 @@ async function checkLinkedRole(client) {
   }
 }
 
+/** If the presence feed is configured, warn when its channel is unusable. */
+async function checkPresenceChannel(client) {
+  if (!config.presence.enabled || !config.presence.channelId) return;
+  const ch = await client.channels.fetch(config.presence.channelId).catch(() => null);
+  if (!ch?.isTextBased()) {
+    await audit(
+      client,
+      `⚠️ PRESENCE_CHANNEL_ID (\`${config.presence.channelId}\`) is not a text channel I can post in — join/leave feed disabled (playtime still tracked).`,
+    );
+  } else {
+    console.log(`[bot] presence feed channel: #${ch.name ?? ch.id}`);
+  }
+}
+
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
     if (interaction.isButton()) {
@@ -148,6 +165,7 @@ async function shutdown(signal) {
   stopBanPoller();
   stopWhitelistReconciler();
   stopRoleReconciler();
+  stopPresencePoller();
   try {
     await audit(client, '🛑 Bot shutting down.');
   } catch {

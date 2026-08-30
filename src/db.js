@@ -41,6 +41,15 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_ban_actions_lookup
     ON ban_actions (lower(mc_name), action, ts);
+
+  CREATE TABLE IF NOT EXISTS presence (
+    mc_uuid       TEXT PRIMARY KEY,
+    mc_name       TEXT NOT NULL,
+    playtime_ms   INTEGER NOT NULL DEFAULT 0,
+    session_start INTEGER,            -- ms epoch; NULL when offline
+    first_seen    INTEGER NOT NULL,
+    last_seen     INTEGER NOT NULL
+  );
 `);
 
 const lc = (s) => (s == null ? s : String(s).toLowerCase());
@@ -134,6 +143,57 @@ export const banActions = {
   lastForName: (mcName) => stmtLastActionForName.get(lc(mcName)),
   /** Most recent 'ban' row for a name (null if the ban predates the bot). */
   lastBan: (mcName) => stmtLastBanForName.get(lc(mcName)),
+};
+
+// ---- presence (playtime / last-seen, keyed by MC uuid) ----------------
+
+const stmtGetPresence = db.prepare('SELECT * FROM presence WHERE mc_uuid = ?');
+const stmtOnlinePresence = db.prepare('SELECT * FROM presence WHERE session_start IS NOT NULL');
+const stmtTopPlaytime = db.prepare(`
+  SELECT mc_uuid, mc_name, session_start,
+         playtime_ms + CASE WHEN session_start IS NULL THEN 0
+                            ELSE MAX(0, ? - session_start) END AS total_ms
+  FROM presence
+  ORDER BY total_ms DESC
+  LIMIT ?
+`);
+// Only ever called for a player whose session is starting (a fresh join, or the
+// priming poll after a restart), so always (re)set session_start = now — that
+// also discards any stale session_start left over from a crash.
+const stmtMarkOnline = db.prepare(`
+  INSERT INTO presence (mc_uuid, mc_name, playtime_ms, session_start, first_seen, last_seen)
+  VALUES (@uuid, @name, 0, @now, @now, @now)
+  ON CONFLICT(mc_uuid) DO UPDATE SET
+    mc_name = excluded.mc_name,
+    last_seen = excluded.last_seen,
+    session_start = excluded.session_start
+`);
+const stmtTouch = db.prepare(
+  'UPDATE presence SET mc_name = ?, last_seen = ? WHERE mc_uuid = ?',
+);
+// MAX(0, …) guards against a backwards clock step (Pi has no RTC; NTP can jump)
+const stmtAccrue = db.prepare(`
+  UPDATE presence
+  SET playtime_ms = playtime_ms + MAX(0, ? - session_start), session_start = ?
+  WHERE mc_uuid = ? AND session_start IS NOT NULL
+`);
+const stmtMarkOffline = db.prepare(`
+  UPDATE presence
+  SET playtime_ms = playtime_ms + MAX(0, ? - session_start), session_start = NULL, last_seen = ?
+  WHERE mc_uuid = ? AND session_start IS NOT NULL
+`);
+
+export const presence = {
+  get: (uuid) => stmtGetPresence.get(uuid),
+  online: () => stmtOnlinePresence.all(),
+  markOnline: (uuid, name, now) => stmtMarkOnline.run({ uuid, name, now }),
+  touch: (uuid, name, now) => stmtTouch.run(name, now, uuid),
+  accrue: (uuid, now) => stmtAccrue.run(now, now, uuid),
+  markOffline: (uuid, now) => stmtMarkOffline.run(now, now, uuid),
+  topByPlaytime: (limit, now = Date.now()) => stmtTopPlaytime.all(now, limit),
+  /** total playtime including the live session */
+  total: (row, now = Date.now()) =>
+    row ? row.playtime_ms + (row.session_start ? Math.max(0, now - row.session_start) : 0) : 0,
 };
 
 // ---- settings (small key/value store for runtime toggles) --------------

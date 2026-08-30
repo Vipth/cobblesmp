@@ -141,6 +141,8 @@ If the Pi runs 32-bit Raspberry Pi OS, add `linux/arm/v7` to `--platform`.
 - `/whoami` — your linked account card (skin, online/banned status, link date)
 - `/mcname <@user>` — a member's account card
 - `/discorduser <username>` — which member owns a Minecraft name (same card)
+- `/playtime [user]` — total playtime, last seen, first joined
+- `/leaderboard` — playtime top 10
 
   Admins additionally see the UUID and, for force-linked accounts, who linked them.
 - `/list` — who's online
@@ -197,6 +199,19 @@ from someone who has it without a link (that needs the privileged members intent
 
 Requires the bot to have **Manage Roles** and its own role positioned **above** the linked
 role. The bot checks this on startup and warns in the log channel if it can't assign it.
+
+## Presence — join/leave feed + playtime
+
+Set `PRESENCE_ENABLED=true` and the bot polls `list` every `PRESENCE_INTERVAL_MS` (default
+60s) to track **playtime**, **last seen** and **first join** for every linked player. Those
+surface on the account card and via `/playtime` and `/leaderboard`.
+
+Set `PRESENCE_CHANNEL_ID` as well and it posts `→ joined` / `← left` / `🎉 first join` there
+(`PRESENCE_MENTION=true` to ping the linked member on join).
+
+Playtime is approximate — it's "time the bot saw you online", so it undercounts across bot
+restarts or RCON outages and is quantised to the poll interval. Fine for a leaderboard, not
+for anything you'd bill by the hour. Sessions shorter than one poll gap are missed entirely.
 
 ## Notes / limitations
 

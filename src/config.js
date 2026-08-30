@@ -109,6 +109,15 @@ export const config = {
     exempt: list('WHITELIST_EXEMPT'),
     reconcileIntervalMs: int('WHITELIST_RECONCILE_INTERVAL_MS', 300_000, { min: 60_000 }),
   },
+  presence: {
+    // poller that tracks playtime / last-seen / first-join by polling `list`
+    enabled: bool('PRESENCE_ENABLED', false),
+    // set a channel too and joins/leaves/first-joins get posted there
+    channelId: optional('PRESENCE_CHANNEL_ID', ''),
+    intervalMs: int('PRESENCE_INTERVAL_MS', 60_000, { min: 15_000 }),
+    // true = join posts ping the linked member
+    mention: bool('PRESENCE_MENTION', false),
+  },
   databasePath: optional('DATABASE_PATH', './data/cobblesmp.db'),
   deployCommandsOnStart: bool('DEPLOY_COMMANDS_ON_START', false),
   // /say is rendered via tellraw (not the vanilla `say`, which shows "[Rcon]").
