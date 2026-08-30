@@ -46,11 +46,26 @@ db.exec(`
     mc_uuid       TEXT PRIMARY KEY,
     mc_name       TEXT NOT NULL,
     playtime_ms   INTEGER NOT NULL DEFAULT 0,
-    session_start INTEGER,            -- ms epoch; NULL when offline
+    session_start INTEGER,            -- when the current session began; NULL when offline
+    accrued_at    INTEGER,            -- last poll that credited playtime this session
     first_seen    INTEGER NOT NULL,
     last_seen     INTEGER NOT NULL
   );
 `);
+
+// ---- migrations (add columns that shipped in a later version) ----------
+function addColumnIfMissing(table, column, def) {
+  const has = db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column);
+  if (!has) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
+  return !has;
+}
+// presence.accrued_at was split out of session_start (which used to double as the
+// accrual marker, so it couldn't show real session length)
+if (addColumnIfMissing('presence', 'accrued_at', 'INTEGER')) {
+  db.exec(
+    `UPDATE presence SET accrued_at = session_start WHERE accrued_at IS NULL AND session_start IS NOT NULL`,
+  );
+}
 
 const lc = (s) => (s == null ? s : String(s).toLowerCase());
 
@@ -149,38 +164,42 @@ export const banActions = {
 
 const stmtGetPresence = db.prepare('SELECT * FROM presence WHERE mc_uuid = ?');
 const stmtOnlinePresence = db.prepare('SELECT * FROM presence WHERE session_start IS NOT NULL');
+// total = banked playtime + time since the last poll that credited this session
 const stmtTopPlaytime = db.prepare(`
   SELECT mc_uuid, mc_name, session_start,
-         playtime_ms + CASE WHEN session_start IS NULL THEN 0
-                            ELSE MAX(0, ? - session_start) END AS total_ms
+         playtime_ms + CASE WHEN accrued_at IS NULL THEN 0
+                            ELSE MAX(0, ? - accrued_at) END AS total_ms
   FROM presence
   ORDER BY total_ms DESC
   LIMIT ?
 `);
-// Only ever called for a player whose session is starting (a fresh join, or the
-// priming poll after a restart), so always (re)set session_start = now — that
-// also discards any stale session_start left over from a crash.
+// Only ever called for a session that is starting (a fresh join, or the priming
+// poll after a restart), so always (re)set both timestamps — that also discards
+// anything stale left over from a crash.
 const stmtMarkOnline = db.prepare(`
-  INSERT INTO presence (mc_uuid, mc_name, playtime_ms, session_start, first_seen, last_seen)
-  VALUES (@uuid, @name, 0, @now, @now, @now)
+  INSERT INTO presence (mc_uuid, mc_name, playtime_ms, session_start, accrued_at, first_seen, last_seen)
+  VALUES (@uuid, @name, 0, @now, @now, @now, @now)
   ON CONFLICT(mc_uuid) DO UPDATE SET
     mc_name = excluded.mc_name,
     last_seen = excluded.last_seen,
-    session_start = excluded.session_start
+    session_start = excluded.session_start,
+    accrued_at = excluded.accrued_at
 `);
 const stmtTouch = db.prepare(
   'UPDATE presence SET mc_name = ?, last_seen = ? WHERE mc_uuid = ?',
 );
-// MAX(0, …) guards against a backwards clock step (Pi has no RTC; NTP can jump)
+// each poll: bank the time since the last poll, advance accrued_at, leave
+// session_start alone. MAX(0, …) guards a backwards clock step (Pi has no RTC).
 const stmtAccrue = db.prepare(`
   UPDATE presence
-  SET playtime_ms = playtime_ms + MAX(0, ? - session_start), session_start = ?
-  WHERE mc_uuid = ? AND session_start IS NOT NULL
+  SET playtime_ms = playtime_ms + MAX(0, ? - accrued_at), accrued_at = ?
+  WHERE mc_uuid = ? AND accrued_at IS NOT NULL
 `);
 const stmtMarkOffline = db.prepare(`
   UPDATE presence
-  SET playtime_ms = playtime_ms + MAX(0, ? - session_start), session_start = NULL, last_seen = ?
-  WHERE mc_uuid = ? AND session_start IS NOT NULL
+  SET playtime_ms = playtime_ms + MAX(0, ? - accrued_at),
+      session_start = NULL, accrued_at = NULL, last_seen = ?
+  WHERE mc_uuid = ? AND accrued_at IS NOT NULL
 `);
 
 export const presence = {
@@ -193,7 +212,7 @@ export const presence = {
   topByPlaytime: (limit, now = Date.now()) => stmtTopPlaytime.all(now, limit),
   /** total playtime including the live session */
   total: (row, now = Date.now()) =>
-    row ? row.playtime_ms + (row.session_start ? Math.max(0, now - row.session_start) : 0) : 0,
+    row ? row.playtime_ms + (row.accrued_at ? Math.max(0, now - row.accrued_at) : 0) : 0,
 };
 
 // ---- settings (small key/value store for runtime toggles) --------------
