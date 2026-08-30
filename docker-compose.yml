@@ -1,0 +1,14 @@
+services:
+  bot:
+    build: .
+    image: cobblesmp-bot:latest
+    container_name: cobblesmp-bot
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # keep the sqlite file on the mounted volume regardless of .env
+      DATABASE_PATH: /app/data/cobblesmp.db
+    volumes:
+      - ./data:/app/data
+    mem_limit: 256m
+    # the bot only makes outbound connections (Discord + RCON), no ports to expose

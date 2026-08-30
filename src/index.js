@@ -1,0 +1,127 @@
+import {
+  Client,
+  Events,
+  GatewayIntentBits,
+  MessageFlags,
+  REST,
+  Routes,
+} from 'discord.js';
+import { config } from './config.js';
+import { closeDb } from './db.js';
+import { rcon } from './rcon.js';
+import { loadCommands } from './commands/index.js';
+import { audit } from './rconCommand.js';
+import {
+  handleBanSyncButton,
+  registerBanEvents,
+  startBanPoller,
+  stopBanPoller,
+} from './bansync.js';
+import { startWhitelistReconciler, stopWhitelistReconciler } from './whitelist.js';
+import { isLinkingOpen } from './state.js';
+
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildModeration],
+});
+
+const commands = await loadCommands();
+
+rcon.onUnhealthy = (message) => audit(client, `⚠️ ${message}`);
+
+client.once(Events.ClientReady, async (c) => {
+  console.log(`[bot] logged in as ${c.user.tag}`);
+
+  if (config.deployCommandsOnStart) {
+    const rest = new REST().setToken(config.discord.token);
+    await rest.put(
+      Routes.applicationGuildCommands(config.discord.clientId, config.discord.guildId),
+      { body: [...commands.values()].map((cmd) => cmd.data.toJSON()) },
+    );
+    console.log('[bot] slash commands registered on start');
+  }
+
+  await checkAdminRole(client);
+
+  registerBanEvents(client);
+  startBanPoller(client);
+  startWhitelistReconciler(client);
+  await audit(
+    client,
+    `✅ Bot online. Linking is ${isLinkingOpen() ? '🟢 open' : '🔴 closed'}.`,
+  );
+});
+
+/** Warn loudly if ADMIN_ROLE_ID doesn't resolve to a real role in the guild. */
+async function checkAdminRole(client) {
+  const guild = await client.guilds.fetch(config.discord.guildId).catch(() => null);
+  if (!guild) {
+    console.warn(`[bot] not a member of guild ${config.discord.guildId}?`);
+    return;
+  }
+  await guild.roles.fetch().catch(() => {});
+  const role = guild.roles.cache.get(config.discord.adminRoleId);
+  if (role) {
+    console.log(`[bot] admin role: @${role.name} (${config.discord.adminRoleId})`);
+  } else {
+    const msg =
+      `⚠️ ADMIN_ROLE_ID (\`${config.discord.adminRoleId}\`) is not a role in this server. ` +
+      `Admin commands (/ban, /forcelink, …) will only work for the server owner until this is fixed in \`.env\`.`;
+    console.warn(`[bot] ${msg}`);
+    await audit(client, msg);
+  }
+}
+
+client.on(Events.InteractionCreate, async (interaction) => {
+  try {
+    if (interaction.isButton() && interaction.customId.startsWith('bansync:')) {
+      await handleBanSyncButton(interaction);
+      return;
+    }
+    if (!interaction.isChatInputCommand()) return;
+
+    const command = commands.get(interaction.commandName);
+    if (!command) return;
+    await command.execute(interaction);
+  } catch (err) {
+    console.error(
+      `[interaction] ${interaction.commandName ?? interaction.customId ?? 'unknown'}:`,
+      err,
+    );
+    const content = `❌ Something went wrong: ${err.message}`;
+    try {
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({ content });
+      } else {
+        await interaction.reply({ content, flags: MessageFlags.Ephemeral });
+      }
+    } catch {
+      /* interaction already gone */
+    }
+  }
+});
+
+client.on(Events.Error, (err) => console.error('[discord] client error:', err));
+
+await client.login(config.discord.token);
+
+let shuttingDown = false;
+async function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`\n[bot] ${signal} received, shutting down…`);
+  stopBanPoller();
+  stopWhitelistReconciler();
+  try {
+    await audit(client, '🛑 Bot shutting down.');
+  } catch {
+    /* ignore */
+  }
+  client.destroy();
+  await rcon.close();
+  closeDb();
+  process.exit(0);
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('unhandledRejection', (reason) => console.error('[unhandledRejection]', reason));

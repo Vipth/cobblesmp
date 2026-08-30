@@ -1,0 +1,22 @@
+{
+  "name": "cobblesmp-bot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Discord <-> Minecraft (Fabric/RCON) account link and cross-platform ban sync bot for CobbleSMP",
+  "type": "module",
+  "engines": {
+    "node": ">=22 <25"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "deploy": "node src/deploy-commands.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.2.0",
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.7",
+    "rcon-client": "^4.2.5"
+  }
+}
