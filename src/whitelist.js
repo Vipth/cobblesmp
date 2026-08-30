@@ -1,3 +1,4 @@
+import { escapeMarkdown } from 'discord.js';
 import { config } from './config.js';
 import { links } from './db.js';
 import { rcon, assertMcName } from './rcon.js';
@@ -143,8 +144,8 @@ export async function reconcileWhitelist(client) {
     await audit(
       client,
       '🔒 Whitelist reconcile:' +
-        (added.length ? ` +${added.length} (${added.join(', ')})` : '') +
-        (removed.length ? ` −${removed.length} (${removed.join(', ')})` : ''),
+        (added.length ? ` +${added.length} (${added.map(escapeMarkdown).join(', ')})` : '') +
+        (removed.length ? ` −${removed.length} (${removed.map(escapeMarkdown).join(', ')})` : ''),
     );
   }
 

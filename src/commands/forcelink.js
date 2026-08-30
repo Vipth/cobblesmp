@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, escapeMarkdown } from 'discord.js';
 import { links } from '../db.js';
 import { assertMcName, ValidationError } from '../rcon.js';
 import { lookupProfileByName, MojangError } from '../mojang.js';
@@ -68,6 +68,6 @@ export async function execute(interaction) {
   await interaction.editReply(`🔗 Linked <@${user.id}> → \`${profile.name}\`.${note}`);
   await audit(
     interaction.client,
-    `🔗 ${interaction.user.tag} force-linked <@${user.id}> → \`${profile.name}\``,
+    `🔗 ${escapeMarkdown(interaction.user.tag)} force-linked <@${user.id}> → \`${profile.name}\``,
   );
 }

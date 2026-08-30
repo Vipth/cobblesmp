@@ -1,3 +1,4 @@
+import { escapeMarkdown } from 'discord.js';
 import { config } from './config.js';
 import { links, presence } from './db.js';
 import { rcon } from './rcon.js';
@@ -105,7 +106,9 @@ async function feedChannel(client) {
 async function postJoin(client, link, firstEver) {
   const ch = await feedChannel(client);
   if (!ch) return;
-  const who = config.presence.mention ? `<@${link.discord_id}>` : `**${link.mc_name}**`;
+  const who = config.presence.mention
+    ? `<@${link.discord_id}>`
+    : `**${escapeMarkdown(link.mc_name)}**`;
   const content = firstEver
     ? `🎉 ${who} joined **CobbleSMP** for the first time!`
     : `→ ${who} joined`;
@@ -121,6 +124,6 @@ async function postLeave(client, row) {
   const ch = await feedChannel(client);
   if (!ch) return;
   await ch
-    .send({ content: `← **${row.mc_name}** left`, allowedMentions: { parse: [] } })
+    .send({ content: `← **${escapeMarkdown(row.mc_name)}** left`, allowedMentions: { parse: [] } })
     .catch((err) => console.error('[presence] leave post failed:', err.message));
 }

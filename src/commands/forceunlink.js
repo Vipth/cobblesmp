@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, escapeMarkdown } from 'discord.js';
 import { links } from '../db.js';
 import { assertMcName, ValidationError } from '../rcon.js';
 import { removeFromWhitelist } from '../whitelist.js';
@@ -62,6 +62,6 @@ export async function execute(interaction) {
   );
   await audit(
     interaction.client,
-    `🔗 ${interaction.user.tag} force-unlinked <@${link.discord_id}> (was \`${link.mc_name}\`)`,
+    `🔗 ${escapeMarkdown(interaction.user.tag)} force-unlinked <@${link.discord_id}> (was \`${link.mc_name}\`)`,
   );
 }

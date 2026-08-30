@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, escapeMarkdown } from 'discord.js';
 import { assertMcName } from '../rcon.js';
 import { isAdmin, runAdminRcon, EPHEMERAL } from '../rconCommand.js';
 import { reconcileWhitelist } from '../whitelist.js';
@@ -47,12 +47,13 @@ export async function execute(interaction) {
           `Nothing to do — ${r.skipped}. Set \`WHITELIST_MODE\` to \`additive\` or \`strict\` to enable enforcement.`,
         );
       }
+      const names = (arr) => arr.map(escapeMarkdown).join(', ');
       const lines = [
         `✅ Synced — server whitelist: ${r.serverCount}, linked: ${r.linkedCount}`,
-        `added: ${r.added.length ? r.added.join(', ') : 'none'}`,
+        `added: ${r.added.length ? names(r.added) : 'none'}`,
       ];
-      if (r.removed.length) lines.push(`removed: ${r.removed.join(', ')}`);
-      if (r.reported.length) lines.push(`unlinked (still allowed): ${r.reported.join(', ')}`);
+      if (r.removed.length) lines.push(`removed: ${names(r.removed)}`);
+      if (r.reported.length) lines.push(`unlinked (still allowed): ${names(r.reported)}`);
       await interaction.editReply(lines.join('\n'));
     } catch (err) {
       await interaction.editReply(`❌ Sync failed: ${err.message}`);

@@ -1,4 +1,4 @@
-import { MessageFlags } from 'discord.js';
+import { MessageFlags, escapeMarkdown } from 'discord.js';
 import { config } from './config.js';
 import { links } from './db.js';
 import { rcon, assertMcName, ValidationError } from './rcon.js';
@@ -125,5 +125,5 @@ export async function runAdminRcon(interaction, { build }) {
 }
 
 export function userTag(interaction) {
-  return `${interaction.user.tag} (<@${interaction.user.id}>)`;
+  return `${escapeMarkdown(interaction.user.tag)} (<@${interaction.user.id}>)`;
 }

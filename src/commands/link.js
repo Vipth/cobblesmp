@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, escapeMarkdown } from 'discord.js';
 import { links } from '../db.js';
 import { assertMcName, ValidationError } from '../rcon.js';
 import { lookupProfileByName, MojangError, skinRenderUrl } from '../mojang.js';
@@ -79,7 +79,7 @@ export async function execute(interaction) {
 
   const embed = new EmbedBuilder()
     .setTitle('Account linked')
-    .setDescription(`**${profile.name}** is now linked to <@${interaction.user.id}>.`)
+    .setDescription(`**${escapeMarkdown(profile.name)}** is now linked to <@${interaction.user.id}>.`)
     .setThumbnail(skinRenderUrl(profile.id))
     .setColor(0x33aa55);
 

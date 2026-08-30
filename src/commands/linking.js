@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, escapeMarkdown } from 'discord.js';
 import { isAdmin, audit, EPHEMERAL } from '../rconCommand.js';
 import { isLinkingOpen, setLinkingOpen } from '../state.js';
 
@@ -38,6 +38,6 @@ export async function execute(interaction) {
   });
   await audit(
     interaction.client,
-    `${open ? '🟢' : '🔴'} ${interaction.user.tag} ${open ? 'opened' : 'closed'} \`/link\` sign-ups.`,
+    `${open ? '🟢' : '🔴'} ${escapeMarkdown(interaction.user.tag)} ${open ? 'opened' : 'closed'} \`/link\` sign-ups.`,
   );
 }

@@ -3,6 +3,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
   EmbedBuilder,
+  escapeMarkdown,
 } from 'discord.js';
 import { config } from './config.js';
 import { links, banState, banActions } from './db.js';
@@ -76,7 +77,7 @@ export async function banEverywhere({
 
   await audit(
     client,
-    `⛔ **${moderatorTag}** banned \`${name}\`${mcOnly ? ' (Minecraft only)' : ''} — ${discordResult}` +
+    `⛔ **${escapeMarkdown(moderatorTag)}** banned \`${name}\`${mcOnly ? ' (Minecraft only)' : ''} — ${discordResult}` +
       `${reason ? ` — reason: ${reason}` : ''}`,
   );
   return { name, discordResult, mcOnly };
@@ -97,7 +98,7 @@ export async function pardonEverywhere({ client, mcName, discordId, initiatedBy,
     }
   }
 
-  await audit(client, `♻️ **${moderatorTag}** pardoned \`${name}\` — ${discordResult}`);
+  await audit(client, `♻️ **${escapeMarkdown(moderatorTag)}** pardoned \`${name}\` — ${discordResult}`);
   return { name, discordResult };
 }
 
@@ -108,7 +109,7 @@ export function registerBanEvents(client) {
     if (ban.guild.id !== config.discord.guildId) return;
     const link = links.getByDiscordId(ban.user.id);
     if (!link) {
-      await audit(client, `ℹ️ ${ban.user.tag} was banned on Discord but has no linked Minecraft account.`);
+      await audit(client, `ℹ️ ${escapeMarkdown(ban.user.tag)} was banned on Discord but has no linked Minecraft account.`);
       return;
     }
     if (botJustDid(link.mc_name, 'ban')) return; // we caused this ban ourselves
@@ -123,7 +124,7 @@ export function registerBanEvents(client) {
         initiatedBy: 'bot',
         reason: ban.reason ?? null,
       });
-      await audit(client, `⛔ ${ban.user.tag} banned on Discord → \`${link.mc_name}\` banned on Minecraft.`);
+      await audit(client, `⛔ ${escapeMarkdown(ban.user.tag)} banned on Discord → \`${link.mc_name}\` banned on Minecraft.`);
     } catch (err) {
       await audit(client, `❌ Failed to ban \`${link.mc_name}\` on Minecraft: ${err.message}`);
     }
@@ -144,7 +145,7 @@ export function registerBanEvents(client) {
         action: 'pardon',
         initiatedBy: 'bot',
       });
-      await audit(client, `♻️ ${ban.user.tag} unbanned on Discord → \`${link.mc_name}\` pardoned on Minecraft.`);
+      await audit(client, `♻️ ${escapeMarkdown(ban.user.tag)} unbanned on Discord → \`${link.mc_name}\` pardoned on Minecraft.`);
     } catch (err) {
       await audit(client, `❌ Failed to pardon \`${link.mc_name}\` on Minecraft: ${err.message}`);
     }

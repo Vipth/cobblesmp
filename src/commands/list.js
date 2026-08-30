@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, escapeMarkdown } from 'discord.js';
 import { rcon } from '../rcon.js';
 import { parseList } from '../parsers.js';
 
@@ -19,7 +19,6 @@ export async function execute(interaction) {
   if (!online) return void interaction.editReply('Nobody is online right now.');
 
   const count = `${online}${max ? `/${max}` : ''}`;
-  await interaction.editReply(
-    `**${count} online:** ${players.length ? players.join(', ') : text.trim()}`,
-  );
+  const names = players.length ? players.map(escapeMarkdown).join(', ') : text.trim();
+  await interaction.editReply(`**${count} online:** ${names}`);
 }
