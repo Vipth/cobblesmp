@@ -153,7 +153,8 @@ If the Pi runs 32-bit Raspberry Pi OS, add `linux/arm/v7` to `--platform`.
 - `/whitelist add|remove|list|sync` — `sync` reconciles the whitelist with linked accounts now
 - `/say <message> [color] [bold]` — broadcast via `tellraw`; prefix set by `SAY_PREFIX` (supports `&` codes)
 - `/forcelink <@user> <username>` — link on someone's behalf
-- `/links [page]` — list all links
+- `/forceunlink <@user | username>` — remove someone else's link
+- `/users [page]` — list every synced account (ephemeral, no pings)
 - `/linking open|close|status` — open or close new `/link` sign-ups (e.g. to stop a rush of new players). Existing links and `/forcelink` are unaffected; persists across restarts.
 
 `<target>` accepts a Minecraft username, an `@mention`, or a raw Discord ID.

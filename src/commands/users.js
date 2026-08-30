@@ -5,8 +5,8 @@ import { isAdmin, EPHEMERAL } from '../rconCommand.js';
 const PAGE_SIZE = 15;
 
 export const data = new SlashCommandBuilder()
-  .setName('links')
-  .setDescription('Admin: list all linked accounts')
+  .setName('users')
+  .setDescription('Admin: list every synced account')
   .addIntegerOption((o) => o.setName('page').setDescription('Page number').setMinValue(1));
 
 export async function execute(interaction) {
@@ -19,14 +19,15 @@ export async function execute(interaction) {
   const page = Math.min(interaction.options.getInteger('page') ?? 1, pages);
   const rows = all
     .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-    .map((l) => `\`${l.mc_name}\` — <@${l.discord_id}>`)
+    .map((l) => `\`${l.mc_name}\` — <@${l.discord_id}> · linked <t:${Math.floor(l.linked_at / 1000)}:R>`)
     .join('\n');
 
   const embed = new EmbedBuilder()
-    .setTitle(`Linked accounts (${all.length})`)
+    .setTitle(`Synced accounts (${all.length})`)
     .setDescription(rows || '(none yet)')
     .setFooter({ text: `Page ${page}/${pages}` })
     .setColor(0x5865f2);
 
+  // ephemeral (only the caller sees it); parse:[] so the <@id>s never ping
   await interaction.reply({ embeds: [embed], allowedMentions: { parse: [] }, ...EPHEMERAL });
 }
