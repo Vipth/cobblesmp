@@ -35,7 +35,9 @@ export async function linkedAccountEmbed(link, { showDiscord = true, showUuid = 
     inline: true,
   });
   if (textures?.capeUrl) {
-    fields.push({ name: 'Cape', value: `[texture](${textures.capeUrl})`, inline: true });
+    // crafthead renders a clean upright cape; the raw Mojang texture is an ugly sheet
+    const capeRender = `https://crafthead.net/cape/${link.mc_uuid.replace(/-/g, '')}`;
+    fields.push({ name: 'Cape', value: `[view](${capeRender})`, inline: true });
   }
   if (showUuid) {
     fields.push({ name: 'UUID', value: `\`${link.mc_uuid}\`` });
