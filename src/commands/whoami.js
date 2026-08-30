@@ -16,8 +16,8 @@ export async function execute(interaction) {
     });
   }
 
-  await interaction.reply({
-    embeds: [linkedAccountEmbed(link, { showDiscord: false })],
-    ...EPHEMERAL,
+  await interaction.deferReply(EPHEMERAL);
+  await interaction.editReply({
+    embeds: [await linkedAccountEmbed(link, { showDiscord: false })],
   });
 }

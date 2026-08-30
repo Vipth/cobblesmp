@@ -30,8 +30,10 @@ export async function execute(interaction) {
     });
   }
 
-  await interaction.reply({
-    embeds: [linkedAccountEmbed(link, { showUuid: isAdmin(interaction) })],
+  const showUuid = isAdmin(interaction);
+  await interaction.deferReply();
+  await interaction.editReply({
+    embeds: [await linkedAccountEmbed(link, { showUuid })],
     allowedMentions: { parse: [] },
   });
 }

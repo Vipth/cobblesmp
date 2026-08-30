@@ -87,9 +87,12 @@ const stmtReplaceBanState = db.transaction((names) => {
   for (const name of names) insert.run(name, now);
 });
 
+const stmtHasBanState = db.prepare('SELECT 1 FROM ban_state WHERE lower(mc_name) = ? LIMIT 1');
+
 export const banState = {
   all: () => stmtAllBanState.all().map((r) => r.mc_name),
   replace: (names) => stmtReplaceBanState(names),
+  has: (name) => Boolean(stmtHasBanState.get(lc(name))),
 };
 
 // ---- ban_actions ------------------------------------------------------
