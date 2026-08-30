@@ -1,7 +1,7 @@
 import { EmbedBuilder } from 'discord.js';
 import { skinRenderUrl } from './mojang.js';
 import { isOnline } from './serverquery.js';
-import { banState } from './db.js';
+import { banState, banActions } from './db.js';
 
 /**
  * The "linked account" card shared by /whoami, /mcname and /discorduser.
@@ -17,8 +17,10 @@ export async function linkedAccountEmbed(link, { showDiscord = true, showUuid = 
   const banned = banState.has(link.mc_name);
 
   let status = null;
-  if (banned) status = '⛔ Banned';
-  else if (online === true) status = '🟢 Online';
+  if (banned) {
+    const lastBan = banActions.lastBan(link.mc_name);
+    status = lastBan ? `⛔ Banned <t:${Math.floor(lastBan.ts / 1000)}:R>` : '⛔ Banned';
+  } else if (online === true) status = '🟢 Online';
   else if (online === false) status = '⚫ Offline';
 
   const color = banned ? 0xcc3333 : online ? 0x43b581 : 0x5865f2;

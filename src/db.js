@@ -111,6 +111,11 @@ const stmtLastActionForName = db.prepare(`
   WHERE lower(mc_name) = ?
   ORDER BY ts DESC LIMIT 1
 `);
+const stmtLastBanForName = db.prepare(`
+  SELECT * FROM ban_actions
+  WHERE lower(mc_name) = ? AND action = 'ban'
+  ORDER BY ts DESC LIMIT 1
+`);
 
 export const banActions = {
   record: ({ mcName = null, discordId = null, direction, action, initiatedBy, reason = null }) =>
@@ -127,6 +132,8 @@ export const banActions = {
   recent: (mcName, action, minutes) =>
     stmtRecentAction.get(lc(mcName), action, Date.now() - minutes * 60_000),
   lastForName: (mcName) => stmtLastActionForName.get(lc(mcName)),
+  /** Most recent 'ban' row for a name (null if the ban predates the bot). */
+  lastBan: (mcName) => stmtLastBanForName.get(lc(mcName)),
 };
 
 // ---- settings (small key/value store for runtime toggles) --------------
