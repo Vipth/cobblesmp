@@ -1,7 +1,8 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { links } from '../db.js';
 import { assertMcName, ValidationError } from '../rcon.js';
-import { EPHEMERAL } from '../rconCommand.js';
+import { linkedAccountEmbed } from '../embeds.js';
+import { isAdmin, EPHEMERAL } from '../rconCommand.js';
 
 export const data = new SlashCommandBuilder()
   .setName('discorduser')
@@ -22,8 +23,15 @@ export async function execute(interaction) {
   }
 
   const link = links.getByName(name);
-  const content = link
-    ? `\`${link.mc_name}\` → <@${link.discord_id}>`
-    : `\`${name}\` is not linked to any Discord member.`;
-  await interaction.reply({ content, allowedMentions: { parse: [] } });
+  if (!link) {
+    return void interaction.reply({
+      content: `\`${name}\` is not linked to any Discord member.`,
+      allowedMentions: { parse: [] },
+    });
+  }
+
+  await interaction.reply({
+    embeds: [linkedAccountEmbed(link, { showUuid: isAdmin(interaction) })],
+    allowedMentions: { parse: [] },
+  });
 }
