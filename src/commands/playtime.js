@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, escapeMarkdown } from 'discord.js';
 import { links, presence } from '../db.js';
 import { formatDuration } from '../duration.js';
 import { skinRenderUrl } from '../mojang.js';
@@ -29,7 +29,7 @@ export async function execute(interaction) {
   }
 
   const embed = new EmbedBuilder()
-    .setTitle(`${link.mc_name} — playtime`)
+    .setTitle(`${escapeMarkdown(link.mc_name)} — playtime`)
     .setThumbnail(skinRenderUrl(link.mc_uuid))
     .setColor(0x43b581)
     .addFields(

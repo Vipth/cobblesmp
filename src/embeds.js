@@ -1,4 +1,4 @@
-import { EmbedBuilder } from 'discord.js';
+import { EmbedBuilder, escapeMarkdown } from 'discord.js';
 import { skinRenderUrl } from './mojang.js';
 import { isOnline } from './serverquery.js';
 import { banState, banActions, presence } from './db.js';
@@ -62,7 +62,7 @@ export async function linkedAccountEmbed(link, { showDiscord = true, showUuid = 
   }
 
   return new EmbedBuilder()
-    .setTitle(link.mc_name)
+    .setTitle(escapeMarkdown(link.mc_name))
     .setURL(`https://namemc.com/profile/${link.mc_uuid.replace(/-/g, '')}`)
     .setThumbnail(skinRenderUrl(link.mc_uuid))
     .setColor(color)
