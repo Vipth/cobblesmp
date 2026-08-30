@@ -2,7 +2,7 @@
 
 Discord ↔ Minecraft (Fabric / RCON) bot for CobbleSMP:
 
-- **Account linking** — members link their Minecraft (Java) name to their Discord account (`/link`). The name is checked against Mojang and added to the server whitelist.
+- **Account linking** — members link their Minecraft (Java) name to their Discord account (`/link`). The name is checked against Mojang and added to the server whitelist. Optionally grants a "linked" Discord role (`LINKED_ROLE_ID`).
 - **Cross-platform ban sync** — a Discord ban bans the linked player in-game, and an in-game ban bans them on Discord (auto or with an admin confirmation button).
 - **Optional link-to-play** — enforce that only linked accounts can join, with a reconciler that keeps the server whitelist in sync with the link table ([details](#require-a-discord-link-to-join-whitelist-enforcement)).
 - **Admin commands over RCON** — `/ban`, `/pardon`, `/kick`, `/give`, `/tp`, `/whitelist`, `/say`, gated to an admin role and audit-logged.
@@ -61,12 +61,15 @@ The bot has no server log/console access (it runs on a separate host), which is 
    - Add a **Bot**, copy its **token** → `DISCORD_TOKEN`.
    - Copy the **Application ID** → `DISCORD_CLIENT_ID`.
    - Under *Bot → Privileged Gateway Intents*: none are required.
-   - Invite it with this URL (replace `CLIENT_ID`), which grants `bot` + `applications.commands` and the **Ban Members** permission:
+   - Invite it with this URL (replace `CLIENT_ID`), which grants `bot` + `applications.commands` and the **Ban Members** + **Manage Roles** permissions:
      ```
-     https://discord.com/api/oauth2/authorize?client_id=CLIENT_ID&scope=bot%20applications.commands&permissions=4
+     https://discord.com/api/oauth2/authorize?client_id=CLIENT_ID&scope=bot%20applications.commands&permissions=268435460
      ```
+     (Manage Roles is only needed if you use `LINKED_ROLE_ID`. If you do, also drag the
+     bot's own role **above** the linked role in Server Settings → Roles.)
 
-3. In your server: note the **guild ID**, the **admin role ID**, and a **log channel ID** (enable Developer Mode → right-click → Copy ID).
+3. In your server: note the **guild ID**, the **admin role ID**, a **log channel ID**, and
+   optionally a **linked-member role ID** (enable Developer Mode → right-click → Copy ID).
 
 ## Configuration
 
@@ -181,6 +184,16 @@ with `/whitelist sync`.
 
 Note: once `WHITELIST_MODE` is `additive`/`strict` and the whitelist is on, unlinked players
 can't rejoin after logging off — that's the point.
+
+## Linked-member role
+
+Set `LINKED_ROLE_ID` to a Discord role and the bot grants it on `/link` / `/forcelink` and
+removes it on `/unlink`. A reconcile every 15 minutes re-grants it to linked members who are
+missing it (e.g. after leaving and rejoining). It's **add-only** — it won't strip the role
+from someone who has it without a link (that needs the privileged members intent).
+
+Requires the bot to have **Manage Roles** and its own role positioned **above** the linked
+role. The bot checks this on startup and warns in the log channel if it can't assign it.
 
 ## Notes / limitations
 

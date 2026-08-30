@@ -3,6 +3,7 @@ import { links } from '../db.js';
 import { assertMcName, ValidationError } from '../rcon.js';
 import { lookupProfileByName, MojangError } from '../mojang.js';
 import { addToWhitelist } from '../whitelist.js';
+import { grantLinkedRole } from '../roles.js';
 import { isAdmin, audit, EPHEMERAL } from '../rconCommand.js';
 
 export const data = new SlashCommandBuilder()
@@ -59,6 +60,8 @@ export async function execute(interaction) {
   } catch (err) {
     note = ` (whitelist add failed: ${err.message})`;
   }
+
+  await grantLinkedRole(interaction.guild, user.id);
 
   await interaction.editReply(`🔗 Linked <@${user.id}> → \`${profile.name}\`.${note}`);
   await audit(

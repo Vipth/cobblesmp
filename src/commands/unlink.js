@@ -1,6 +1,7 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { links } from '../db.js';
 import { removeFromWhitelist } from '../whitelist.js';
+import { revokeLinkedRole } from '../roles.js';
 import { audit, EPHEMERAL } from '../rconCommand.js';
 
 export const data = new SlashCommandBuilder()
@@ -20,6 +21,8 @@ export async function execute(interaction) {
   } catch (err) {
     note = ` (couldn't update the whitelist: ${err.message})`;
   }
+
+  await revokeLinkedRole(interaction.guild, interaction.user.id);
 
   await interaction.editReply(`Unlinked \`${link.mc_name}\`.${note}`);
   await audit(interaction.client, `🔗 <@${interaction.user.id}> unlinked \`${link.mc_name}\``);

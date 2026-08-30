@@ -86,6 +86,8 @@ export const config = {
     guildId: required('GUILD_ID'),
     adminRoleId: required('ADMIN_ROLE_ID'),
     logChannelId: required('LOG_CHANNEL_ID'),
+    // optional: role given to members who have linked a Minecraft account ('' = off)
+    linkedRoleId: optional('LINKED_ROLE_ID', ''),
   },
   rcon: {
     host: optional('RCON_HOST', '127.0.0.1'),

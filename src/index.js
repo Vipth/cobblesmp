@@ -18,6 +18,7 @@ import {
   stopBanPoller,
 } from './bansync.js';
 import { startWhitelistReconciler, stopWhitelistReconciler } from './whitelist.js';
+import { startRoleReconciler, stopRoleReconciler, linkedRoleEnabled } from './roles.js';
 import { isLinkingOpen } from './state.js';
 
 const client = new Client({
@@ -41,10 +42,12 @@ client.once(Events.ClientReady, async (c) => {
   }
 
   await checkAdminRole(client);
+  await checkLinkedRole(client);
 
   registerBanEvents(client);
   startBanPoller(client);
   startWhitelistReconciler(client);
+  startRoleReconciler(client);
   await audit(
     client,
     `✅ Bot online. Linking is ${isLinkingOpen() ? '🟢 open' : '🔴 closed'}.`,
@@ -68,6 +71,33 @@ async function checkAdminRole(client) {
       `Admin commands (/ban, /forcelink, …) will only work for the server owner until this is fixed in \`.env\`.`;
     console.warn(`[bot] ${msg}`);
     await audit(client, msg);
+  }
+}
+
+/** Validate LINKED_ROLE_ID (if set) exists and the bot can actually assign it. */
+async function checkLinkedRole(client) {
+  if (!linkedRoleEnabled()) return;
+  const guild = await client.guilds.fetch(config.discord.guildId).catch(() => null);
+  if (!guild) return;
+  await guild.roles.fetch().catch(() => {});
+  const role = guild.roles.cache.get(config.discord.linkedRoleId);
+  if (!role) {
+    await audit(
+      client,
+      `⚠️ LINKED_ROLE_ID (\`${config.discord.linkedRoleId}\`) is not a role in this server — linked-role sync is effectively off.`,
+    );
+    return;
+  }
+  const me = await guild.members.fetchMe().catch(() => null);
+  if (me && !me.permissions.has('ManageRoles')) {
+    await audit(client, `⚠️ I need the **Manage Roles** permission to assign @${role.name}.`);
+  } else if (me && role.position >= me.roles.highest.position) {
+    await audit(
+      client,
+      `⚠️ @${role.name} sits above my highest role — move it below me or I can't assign it.`,
+    );
+  } else {
+    console.log(`[bot] linked role: @${role.name} (${config.discord.linkedRoleId})`);
   }
 }
 
@@ -111,6 +141,7 @@ async function shutdown(signal) {
   console.log(`\n[bot] ${signal} received, shutting down…`);
   stopBanPoller();
   stopWhitelistReconciler();
+  stopRoleReconciler();
   try {
     await audit(client, '🛑 Bot shutting down.');
   } catch {
