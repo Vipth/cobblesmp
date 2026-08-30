@@ -3,6 +3,7 @@ import { links } from '../db.js';
 import { assertMcName, ValidationError } from '../rcon.js';
 import { lookupProfileByName, MojangError, skinRenderUrl } from '../mojang.js';
 import { addToWhitelist } from '../whitelist.js';
+import { grantLinkedRole } from '../roles.js';
 import { isLinkingOpen } from '../state.js';
 import { audit, EPHEMERAL } from '../rconCommand.js';
 
@@ -73,6 +74,8 @@ export async function execute(interaction) {
   } catch (err) {
     note = `⚠️ Linked, but I couldn't whitelist you automatically (${err.message}). An admin can run \`/whitelist add\`.`;
   }
+
+  await grantLinkedRole(interaction.guild, interaction.user.id);
 
   const embed = new EmbedBuilder()
     .setTitle('Account linked')
