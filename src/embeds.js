@@ -1,22 +1,19 @@
 import { EmbedBuilder } from 'discord.js';
-import { skinRenderUrl, fetchTextures } from './mojang.js';
+import { skinRenderUrl } from './mojang.js';
 import { isOnline } from './serverquery.js';
 import { banState } from './db.js';
 
 /**
  * The "linked account" card shared by /whoami, /mcname and /discorduser.
- * Async — it pulls live online status (cached), ban state (from the ban poller's
- * table, free) and the cape flag (from Mojang's texture blob, cached).
+ * Async — it pulls live online status (cached) and ban state (from the ban
+ * poller's table, free).
  *
  * @param link  a row from the `links` table
  * @param opts.showDiscord  include the "Discord" field (off for /whoami — it's you)
  * @param opts.showUuid     include UUID + "Linked by" (admins only)
  */
 export async function linkedAccountEmbed(link, { showDiscord = true, showUuid = false } = {}) {
-  const [online, textures] = await Promise.all([
-    isOnline(link.mc_name),
-    fetchTextures(link.mc_uuid).catch(() => null),
-  ]);
+  const online = await isOnline(link.mc_name);
   const banned = banState.has(link.mc_name);
 
   let status = null;
@@ -34,11 +31,6 @@ export async function linkedAccountEmbed(link, { showDiscord = true, showUuid = 
     value: `<t:${Math.floor(link.linked_at / 1000)}:R>`,
     inline: true,
   });
-  if (textures?.capeUrl) {
-    // crafthead renders a clean upright cape; the raw Mojang texture is an ugly sheet
-    const capeRender = `https://crafthead.net/cape/${link.mc_uuid.replace(/-/g, '')}`;
-    fields.push({ name: 'Cape', value: `[view](${capeRender})`, inline: true });
-  }
   if (showUuid) {
     fields.push({ name: 'UUID', value: `\`${link.mc_uuid}\`` });
     if (link.linked_by && link.linked_by !== link.discord_id) {

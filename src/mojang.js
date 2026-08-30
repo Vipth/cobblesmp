@@ -83,48 +83,6 @@ export async function lookupNameByUuid(uuid) {
   return body?.name ?? null;
 }
 
-const texturesCache = new Map(); // undashed uuid -> { value, expires }
-
-/**
- * Skin model + cape from the session server's texture blob.
- * @returns {Promise<{ model: 'classic'|'slim', capeUrl: string|null } | null>}
- */
-export async function fetchTextures(uuid) {
-  const id = String(uuid).replace(/-/g, '');
-  const hit = texturesCache.get(id);
-  if (hit && hit.expires > Date.now()) return hit.value;
-
-  let res;
-  try {
-    res = await fetch(`https://sessionserver.mojang.com/session/minecraft/profile/${id}`, {
-      headers: { accept: 'application/json' },
-      signal: AbortSignal.timeout(8_000),
-    });
-  } catch {
-    return null;
-  }
-  if (!res.ok) return null;
-
-  const body = await res.json().catch(() => null);
-  const b64 = body?.properties?.find((p) => p.name === 'textures')?.value;
-  if (!b64) return null;
-
-  let decoded;
-  try {
-    decoded = JSON.parse(Buffer.from(b64, 'base64').toString('utf8'));
-  } catch {
-    return null;
-  }
-
-  const rawCape = decoded?.textures?.CAPE?.url ?? null;
-  const value = {
-    model: decoded?.textures?.SKIN?.metadata?.model === 'slim' ? 'slim' : 'classic',
-    capeUrl: rawCape ? rawCape.replace(/^http:/, 'https:') : null,
-  };
-  texturesCache.set(id, { value, expires: Date.now() + CACHE_TTL_MS });
-  return value;
-}
-
 export function skinRenderUrl(uuidOrName) {
   // Face avatar (with hat overlay) for embed thumbnails. Accepts a UUID or name.
   // mc-heads.net — crafatar.com is chronically unreliable.

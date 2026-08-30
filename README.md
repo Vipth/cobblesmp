@@ -138,7 +138,7 @@ If the Pi runs 32-bit Raspberry Pi OS, add `linux/arm/v7` to `--platform`.
 ### Everyone
 - `/link <username>` — link your Minecraft account (whitelists you)
 - `/unlink` — remove your link (removes you from the whitelist)
-- `/whoami` — your linked account card (skin, online/banned status, cape, link date)
+- `/whoami` — your linked account card (skin, online/banned status, link date)
 - `/mcname <@user>` — a member's account card
 - `/discorduser <username>` — which member owns a Minecraft name (same card)
 
