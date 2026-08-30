@@ -138,9 +138,11 @@ If the Pi runs 32-bit Raspberry Pi OS, add `linux/arm/v7` to `--platform`.
 ### Everyone
 - `/link <username>` — link your Minecraft account (whitelists you)
 - `/unlink` — remove your link (removes you from the whitelist)
-- `/whoami` — show your linked account
-- `/mcname <@user>` — a member's Minecraft name
-- `/discorduser <username>` — which member owns a Minecraft name
+- `/whoami` — your linked account card (skin, online/banned status, cape, link date)
+- `/mcname <@user>` — a member's account card
+- `/discorduser <username>` — which member owns a Minecraft name (same card)
+
+  Admins additionally see the UUID and, for force-linked accounts, who linked them.
 - `/list` — who's online
 
 ### Admin role only (also audit-logged to the log channel)
