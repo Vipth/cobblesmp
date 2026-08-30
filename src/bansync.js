@@ -46,13 +46,26 @@ export async function pardonDiscord({ client, discordId }) {
 
 // ---- high level: admin /ban and /pardon -----------------------------
 
-export async function banEverywhere({ client, mcName, discordId, reason, initiatedBy, moderatorTag }) {
+export async function banEverywhere({
+  client,
+  mcName,
+  discordId,
+  reason,
+  initiatedBy,
+  moderatorTag,
+  mcOnly = false,
+}) {
   const name = assertMcName(mcName);
   await banMinecraft({ mcName: name, reason });
+  // record it either way so the poller's loop guard doesn't re-propose this ban
   banActions.record({ mcName: name, discordId, direction: 'd2m', action: 'ban', initiatedBy, reason });
 
-  let discordResult = 'no linked Discord account';
-  if (discordId) {
+  let discordResult;
+  if (mcOnly) {
+    discordResult = 'Discord left alone';
+  } else if (!discordId) {
+    discordResult = 'no linked Discord account';
+  } else {
     try {
       await banDiscord({ client, discordId, reason: reason || `Banned by ${moderatorTag}` });
       discordResult = `banned <@${discordId}>`;
@@ -63,9 +76,10 @@ export async function banEverywhere({ client, mcName, discordId, reason, initiat
 
   await audit(
     client,
-    `⛔ **${moderatorTag}** banned \`${name}\` — ${discordResult}${reason ? ` — reason: ${reason}` : ''}`,
+    `⛔ **${moderatorTag}** banned \`${name}\`${mcOnly ? ' (Minecraft only)' : ''} — ${discordResult}` +
+      `${reason ? ` — reason: ${reason}` : ''}`,
   );
-  return { name, discordResult };
+  return { name, discordResult, mcOnly };
 }
 
 export async function pardonEverywhere({ client, mcName, discordId, initiatedBy, moderatorTag }) {

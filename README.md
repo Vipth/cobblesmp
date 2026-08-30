@@ -146,7 +146,7 @@ If the Pi runs 32-bit Raspberry Pi OS, add `linux/arm/v7` to `--platform`.
 - `/list` — who's online
 
 ### Admin role only (also audit-logged to the log channel)
-- `/ban <target> [reason]` — ban on Minecraft **and** Discord
+- `/ban <target> [reason] [minecraft_only]` — ban on Minecraft **and** Discord (or just Minecraft with `minecraft_only:true`)
 - `/pardon <target>` — unban on both
 - `/kick <target> [reason]`
 - `/op <target>` / `/deop <target>` — grant/revoke in-game operator

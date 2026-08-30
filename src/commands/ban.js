@@ -12,7 +12,10 @@ export const data = new SlashCommandBuilder()
       .setDescription('Minecraft username, @mention, or Discord ID')
       .setRequired(true),
   )
-  .addStringOption((o) => o.setName('reason').setDescription('Ban reason').setMaxLength(120));
+  .addStringOption((o) => o.setName('reason').setDescription('Ban reason').setMaxLength(120))
+  .addBooleanOption((o) =>
+    o.setName('minecraft_only').setDescription('Ban in-game only — leave their Discord account alone'),
+  );
 
 export async function execute(interaction) {
   if (!isAdmin(interaction)) {
@@ -21,6 +24,7 @@ export async function execute(interaction) {
 
   const raw = interaction.options.getString('target', true);
   const reason = sanitizeReason(interaction.options.getString('reason'));
+  const mcOnly = interaction.options.getBoolean('minecraft_only') ?? false;
 
   let target;
   try {
@@ -41,6 +45,7 @@ export async function execute(interaction) {
       reason,
       initiatedBy: 'admin',
       moderatorTag: interaction.user.tag,
+      mcOnly,
     });
     await interaction.editReply(`⛔ Banned \`${res.name}\` on Minecraft — ${res.discordResult}.`);
   } catch (err) {
