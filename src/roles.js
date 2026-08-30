@@ -21,7 +21,10 @@ export const linkedRoleEnabled = () => Boolean(roleId());
 
 async function fetchMember(guild, userId) {
   try {
-    return await guild.members.fetch(userId);
+    // force: true — bypass the member cache. Without the GuildMembers intent the
+    // bot gets no GUILD_MEMBER_UPDATE events, so a cached member's role list goes
+    // stale and the reconciler would re-add (and re-announce) the role forever.
+    return await guild.members.fetch({ user: userId, force: true });
   } catch {
     return null; // not in the server
   }
