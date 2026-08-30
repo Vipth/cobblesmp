@@ -103,8 +103,14 @@ async function checkLinkedRole(client) {
 
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
-    if (interaction.isButton() && interaction.customId.startsWith('bansync:')) {
-      await handleBanSyncButton(interaction);
+    if (interaction.isButton()) {
+      if (interaction.customId.startsWith('bansync:')) {
+        await handleBanSyncButton(interaction);
+        return;
+      }
+      // route "<commandName>:..." button ids to that command's handleButton()
+      const owner = commands.get(interaction.customId.split(':')[0]);
+      if (owner?.handleButton) await owner.handleButton(interaction);
       return;
     }
     if (!interaction.isChatInputCommand()) return;
