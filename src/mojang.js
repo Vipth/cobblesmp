@@ -84,7 +84,8 @@ export async function lookupNameByUuid(uuid) {
 }
 
 export function skinRenderUrl(uuidOrName) {
-  // Crafatar renders from UUID or name; used only for a thumbnail in embeds.
+  // Face avatar (with hat overlay) for embed thumbnails. Accepts a UUID or name.
+  // mc-heads.net — crafatar.com is chronically unreliable.
   const id = String(uuidOrName).replace(/-/g, '');
-  return `https://crafatar.com/avatars/${id}?size=128&overlay`;
+  return `https://mc-heads.net/avatar/${id}/128`;
 }
