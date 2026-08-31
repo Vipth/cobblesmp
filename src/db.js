@@ -290,6 +290,9 @@ export const feedbackPosts = {
 const stmtGetFeedbackClaim = db.prepare(
   'SELECT * FROM feedback_claims WHERE feedback_post_id = ? AND discord_id = ?',
 );
+const stmtFeedbackClaimsForPost = db.prepare(
+  'SELECT * FROM feedback_claims WHERE feedback_post_id = ? ORDER BY chosen_at ASC',
+);
 const stmtInsertFeedbackClaim = db.prepare(`
   INSERT INTO feedback_claims (
     feedback_post_id, discord_id, mc_uuid, sentiment, reward_label, command_template,
@@ -306,6 +309,7 @@ const stmtMarkFeedbackClaimDelivered = db.prepare(
 
 export const feedbackClaims = {
   get: (postId, discordId) => stmtGetFeedbackClaim.get(postId, discordId),
+  forPost: (postId) => stmtFeedbackClaimsForPost.all(postId),
   /** Throws a better-sqlite3 SQLITE_CONSTRAINT_UNIQUE error on a double claim — caller catches it. */
   create: ({
     postId,

@@ -23,15 +23,31 @@ export const adminOnly = true;
 
 export const data = new SlashCommandBuilder()
   .setName('feedback')
-  .setDescription('Post a feedback request, optionally with claimable rewards')
-  .addChannelOption((o) =>
-    o
-      .setName('channel')
-      .setDescription('Channel to post in (saved as the default for next time)')
-      .addChannelTypes(ChannelType.GuildText),
+  .setDescription('Post a feedback request, review results, or manage settings')
+  .addSubcommand((s) =>
+    s
+      .setName('post')
+      .setDescription('Post a new feedback request, optionally with claimable rewards')
+      .addChannelOption((o) =>
+        o
+          .setName('channel')
+          .setDescription('Channel to post in (saved as the default for next time)')
+          .addChannelTypes(ChannelType.GuildText),
+      ),
   )
-  .addBooleanOption((o) =>
-    o.setName('reset_channel').setDescription('Clear the saved feedback channel (no post is made)'),
+  .addSubcommand((s) =>
+    s.setName('reset-channel').setDescription('Clear the saved feedback channel (no post is made)'),
+  )
+  .addSubcommand((s) =>
+    s
+      .setName('results')
+      .setDescription('Show vote and reward-claim results for a feedback post')
+      .addStringOption((o) =>
+        o
+          .setName('message')
+          .setDescription('The feedback post: its message link or raw message ID')
+          .setRequired(true),
+      ),
   );
 
 export async function execute(interaction) {
@@ -45,9 +61,15 @@ export async function execute(interaction) {
     });
   }
 
-  if (interaction.options.getBoolean('reset_channel')) {
+  const sub = interaction.options.getSubcommand();
+
+  if (sub === 'reset-channel') {
     clearFeedbackChannel();
     return void interaction.reply({ content: '✅ Cleared the saved feedback channel.', ...EPHEMERAL });
+  }
+
+  if (sub === 'results') {
+    return void showResults(interaction);
   }
 
   const channelOption = interaction.options.getChannel('channel');
@@ -90,6 +112,60 @@ export async function execute(interaction) {
     );
 
   await interaction.showModal(modal);
+}
+
+async function showResults(interaction) {
+  const raw = interaction.options.getString('message', true);
+  const messageId = extractMessageId(raw);
+
+  const post = feedbackPosts.get(messageId);
+  if (!post) {
+    return void interaction.reply({ content: `⚠️ No feedback post found for \`${raw}\`.`, ...EPHEMERAL });
+  }
+
+  const claims = feedbackClaims.forPost(post.message_id);
+  const up = claims.filter((c) => c.sentiment === 'up').length;
+  const down = claims.filter((c) => c.sentiment === 'down').length;
+
+  const embed = new EmbedBuilder()
+    .setTitle('Feedback results')
+    .setURL(`https://discord.com/channels/${interaction.guildId}/${post.channel_id}/${post.message_id}`)
+    .setDescription(post.message.length > 200 ? `${post.message.slice(0, 200)}…` : post.message)
+    .setColor(0x5865f2)
+    .addFields(
+      { name: 'Votes', value: `⬆️ ${up}   ⬇️ ${down}   (${claims.length} total)` },
+      { name: 'Posted by', value: `<@${post.author_id}>`, inline: true },
+      { name: 'Posted', value: `<t:${Math.floor(post.created_at / 1000)}:R>`, inline: true },
+    );
+
+  if (post.rewards.length > 0) {
+    const rewardClaims = claims.filter((c) => c.status !== 'no_reward');
+    const delivered = rewardClaims.filter((c) => c.status === 'delivered').length;
+    const queued = rewardClaims.filter((c) => c.status === 'queued').length;
+
+    const byReward = new Map();
+    for (const c of rewardClaims) byReward.set(c.reward_label, (byReward.get(c.reward_label) ?? 0) + 1);
+    const rewardLines = post.rewards
+      .map((r) => `${r.label}: ${byReward.get(r.label) ?? 0}`)
+      .join('\n');
+
+    embed.addFields(
+      {
+        name: 'Rewards claimed',
+        value: `${rewardClaims.length} total — ${delivered} delivered, ${queued} queued for delivery`,
+      },
+      { name: 'By reward', value: rewardLines || '_none_' },
+    );
+  }
+
+  await interaction.reply({ embeds: [embed], ...EPHEMERAL });
+}
+
+/** Accept either a raw message id or a full Discord message link and return the trailing id. */
+function extractMessageId(raw) {
+  const s = String(raw ?? '').trim();
+  const match = s.match(/(\d{15,20})\/?$/);
+  return match ? match[1] : s;
 }
 
 export async function handleModal(interaction) {

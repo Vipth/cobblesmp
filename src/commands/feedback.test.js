@@ -91,14 +91,22 @@ function guildBits({ userId, admin }) {
   };
 }
 
-function mkCommandInteraction({ userId = 'ADMIN1', admin = true, channelOption = null, resetChannel = null, client }) {
+function mkCommandInteraction({
+  userId = 'ADMIN1',
+  admin = true,
+  subcommand = 'post',
+  channelOption = null,
+  messageOption = null,
+  client,
+}) {
   const replies = [];
   const modals = [];
   return {
     ...guildBits({ userId, admin }),
     options: {
-      getBoolean: (name) => (name === 'reset_channel' ? resetChannel : null),
+      getSubcommand: () => subcommand,
       getChannel: (name) => (name === 'channel' ? channelOption : null),
+      getString: (name) => (name === 'message' ? messageOption : null),
     },
     reply: async (payload) => void replies.push(payload),
     showModal: async (modal) => void modals.push(modal),
@@ -165,9 +173,9 @@ test('execute: explicit channel option opens the modal and saves the channel as 
   assert.equal(getFeedbackChannel(), 'CHAN-A');
 });
 
-test('execute: reset_channel clears the saved channel without opening a modal', async () => {
+test('execute: reset-channel clears the saved channel without opening a modal', async () => {
   const client = makeFakeClient();
-  const i = mkCommandInteraction({ resetChannel: true, client });
+  const i = mkCommandInteraction({ subcommand: 'reset-channel', client });
   await execute(i);
   assert.equal(i._modals.length, 0);
   assert.equal(getFeedbackChannel(), null);
@@ -193,6 +201,77 @@ test('execute: feature disabled refuses even for an admin with a channel', async
   } finally {
     config.feedback.enabled = true;
   }
+});
+
+test('execute: results for an unknown message -> ephemeral "not found"', async () => {
+  const client = makeFakeClient();
+  const i = mkCommandInteraction({ subcommand: 'results', messageOption: 'no-such-post', client });
+  await execute(i);
+  assert.match(i._replies[0].content, /No feedback post found/);
+});
+
+test('execute: results summarizes votes and reward claims', async () => {
+  feedbackPosts.create({
+    messageId: 'post-results-1',
+    channelId: 'CHAN-C',
+    authorId: 'ADMIN1',
+    message: 'How are we doing?',
+    rewards: [
+      { label: '3× minecraft:apple', commandTemplate: 'give {player} minecraft:apple 3' },
+      { label: "Thor's Hammer", commandTemplate: 'thorshammer give {player} 1' },
+    ],
+  });
+  feedbackClaims.create({ postId: 'post-results-1', discordId: 'R-UP-1', sentiment: 'up', status: 'no_reward' });
+  feedbackClaims.create({ postId: 'post-results-1', discordId: 'R-UP-2', sentiment: 'up', status: 'no_reward' });
+  feedbackClaims.create({ postId: 'post-results-1', discordId: 'R-DOWN-1', sentiment: 'down', status: 'no_reward' });
+  feedbackClaims.create({
+    postId: 'post-results-1',
+    discordId: 'R-CLAIM-1',
+    mcUuid: 'uuid-r1',
+    sentiment: 'up',
+    rewardLabel: '3× minecraft:apple',
+    commandTemplate: 'give {player} minecraft:apple 3',
+    wasOnline: true,
+    status: 'delivered',
+    deliveredAt: Date.now(),
+  });
+  feedbackClaims.create({
+    postId: 'post-results-1',
+    discordId: 'R-CLAIM-2',
+    mcUuid: 'uuid-r2',
+    sentiment: 'down',
+    rewardLabel: "Thor's Hammer",
+    commandTemplate: 'thorshammer give {player} 1',
+    wasOnline: false,
+    status: 'queued',
+  });
+
+  const client = makeFakeClient();
+  const i = mkCommandInteraction({ subcommand: 'results', messageOption: 'post-results-1', client });
+  await execute(i);
+
+  const embed = i._replies[0].embeds[0].data;
+  const field = (name) => embed.fields.find((f) => f.name === name).value;
+  assert.match(field('Votes'), /⬆️ 3/);
+  assert.match(field('Votes'), /⬇️ 2/);
+  assert.match(field('Votes'), /5 total/);
+  assert.match(field('Rewards claimed'), /2 total/);
+  assert.match(field('Rewards claimed'), /1 delivered/);
+  assert.match(field('Rewards claimed'), /1 queued/);
+  assert.match(field('By reward'), /3× minecraft:apple: 1/);
+  assert.match(field('By reward'), /Thor's Hammer: 1/);
+});
+
+test('execute: results accepts a full message link, not just a raw id', async () => {
+  // a real Discord message id in a jump link is a numeric snowflake
+  feedbackPosts.create({ messageId: '345678901234567890', channelId: 'CHAN-C', authorId: 'ADMIN1', message: 'm2', rewards: [] });
+  const client = makeFakeClient();
+  const jumpLink = 'https://discord.com/channels/123456789012345678/234567890123456789/345678901234567890';
+  const i = mkCommandInteraction({ subcommand: 'results', messageOption: jumpLink, client });
+  await execute(i);
+  assert.equal(i._replies.length, 1);
+  const embed = i._replies[0].embeds[0].data;
+  assert.equal(embed.description, 'm2');
 });
 
 // ================= handleModal =================

@@ -164,7 +164,7 @@ If the Pi runs 32-bit Raspberry Pi OS, add `linux/arm/v7` to `--platform`.
 - `/forceunlink <@user | username>` — remove someone else's link
 - `/users [page]` — list every synced account (ephemeral, no pings)
 - `/linking open|close|status` — open or close new `/link` sign-ups (e.g. to stop a rush of new players). Existing links and `/forcelink` are unaffected; persists across restarts.
-- `/feedback [channel] [reset_channel]` — post a feedback request with optional claimable rewards ([details](#feedback-rewards)); off unless `FEEDBACK_REWARDS_ENABLED=true`.
+- `/feedback post|reset-channel|results` — post a feedback request with optional claimable rewards, clear the saved channel, or review a post's vote/claim results ([details](#feedback-rewards)); off unless `FEEDBACK_REWARDS_ENABLED=true`.
 
 `<target>` accepts a Minecraft username, an `@mention`, or a raw Discord ID.
 
@@ -220,10 +220,10 @@ for anything you'd bill by the hour. Sessions shorter than one poll gap are miss
 
 ## Feedback rewards
 
-Off by default (`FEEDBACK_REWARDS_ENABLED=false`). When enabled, an admin runs `/feedback`,
-which asks for the target channel (an explicit `channel:` option is saved as the new default
-for next time; `reset_channel:true` clears the saved default) and then opens a modal for the
-feedback message and an optional reward list, one per line:
+Off by default (`FEEDBACK_REWARDS_ENABLED=false`). When enabled, an admin runs
+`/feedback post`, which asks for the target channel (an explicit `channel:` option is saved
+as the new default for next time; `/feedback reset-channel` clears the saved default) and
+then opens a modal for the feedback message and an optional reward list, one per line:
 
 - `<qty> <item_id>` — e.g. `3 minecraft:apple` or `1 examplemod:thors_hammer` — shorthand for
   an in-game `give`.
@@ -244,6 +244,10 @@ Every claim is logged (reward chosen, when, whether the player was online at pic
 it was actually delivered) and each Discord member — and each underlying Minecraft account —
 can claim only once per feedback post, even across an unlink/relink to a different Discord
 account.
+
+Run `/feedback results <message>` (paste the post's message link or raw message ID) to see a
+summary: up/down vote counts, total reward claims broken down by delivered vs queued, and a
+per-reward breakdown of how many of each option were claimed.
 
 ## Notes / limitations
 
