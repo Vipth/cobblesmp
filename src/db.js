@@ -51,6 +51,34 @@ db.exec(`
     first_seen    INTEGER NOT NULL,
     last_seen     INTEGER NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS feedback_posts (
+    message_id TEXT PRIMARY KEY,
+    channel_id TEXT NOT NULL,
+    author_id  TEXT NOT NULL,
+    message    TEXT NOT NULL,
+    rewards    TEXT NOT NULL,   -- JSON array of { label, commandTemplate }
+    created_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS feedback_claims (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    feedback_post_id    TEXT NOT NULL REFERENCES feedback_posts(message_id),
+    discord_id          TEXT NOT NULL,
+    mc_uuid             TEXT,        -- NULL only for a sentiment-only 'no_reward' claim
+    sentiment           TEXT NOT NULL,   -- 'up' | 'down'
+    reward_label        TEXT,        -- NULL when the post had no rewards
+    command_template    TEXT,        -- NULL when the post had no rewards
+    chosen_at           INTEGER NOT NULL,
+    was_online_at_pick  INTEGER NOT NULL,   -- 0 | 1
+    status              TEXT NOT NULL,   -- 'delivered' | 'queued' | 'no_reward'
+    delivered_at        INTEGER,
+    UNIQUE (feedback_post_id, discord_id),
+    UNIQUE (feedback_post_id, mc_uuid)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_feedback_claims_queued
+    ON feedback_claims (status);
 `);
 
 // ---- migrations (add columns that shipped in a later version) ----------
@@ -222,15 +250,88 @@ const stmtSetSetting = db.prepare(`
   INSERT INTO settings (key, value) VALUES (?, ?)
   ON CONFLICT(key) DO UPDATE SET value = excluded.value
 `);
+const stmtDeleteSetting = db.prepare('DELETE FROM settings WHERE key = ?');
 
 export const settings = {
   get: (key, fallback = null) => stmtGetSetting.get(key)?.value ?? fallback,
   set: (key, value) => stmtSetSetting.run(key, String(value)),
+  delete: (key) => stmtDeleteSetting.run(key),
   getBool: (key, fallback = false) => {
     const row = stmtGetSetting.get(key);
     return row ? row.value === '1' : fallback;
   },
   setBool: (key, value) => stmtSetSetting.run(key, value ? '1' : '0'),
+};
+
+// ---- feedback_posts / feedback_claims -----------------------------------
+
+const stmtInsertFeedbackPost = db.prepare(`
+  INSERT INTO feedback_posts (message_id, channel_id, author_id, message, rewards, created_at)
+  VALUES (@message_id, @channel_id, @author_id, @message, @rewards, @created_at)
+`);
+const stmtGetFeedbackPost = db.prepare('SELECT * FROM feedback_posts WHERE message_id = ?');
+
+export const feedbackPosts = {
+  create: ({ messageId, channelId, authorId, message, rewards }) =>
+    stmtInsertFeedbackPost.run({
+      message_id: messageId,
+      channel_id: channelId,
+      author_id: authorId,
+      message,
+      rewards: JSON.stringify(rewards),
+      created_at: Date.now(),
+    }),
+  get: (messageId) => {
+    const row = stmtGetFeedbackPost.get(messageId);
+    return row ? { ...row, rewards: JSON.parse(row.rewards) } : null;
+  },
+};
+
+const stmtGetFeedbackClaim = db.prepare(
+  'SELECT * FROM feedback_claims WHERE feedback_post_id = ? AND discord_id = ?',
+);
+const stmtInsertFeedbackClaim = db.prepare(`
+  INSERT INTO feedback_claims (
+    feedback_post_id, discord_id, mc_uuid, sentiment, reward_label, command_template,
+    chosen_at, was_online_at_pick, status, delivered_at
+  ) VALUES (
+    @feedback_post_id, @discord_id, @mc_uuid, @sentiment, @reward_label, @command_template,
+    @chosen_at, @was_online_at_pick, @status, @delivered_at
+  )
+`);
+const stmtQueuedFeedbackClaims = db.prepare("SELECT * FROM feedback_claims WHERE status = 'queued'");
+const stmtMarkFeedbackClaimDelivered = db.prepare(
+  "UPDATE feedback_claims SET status = 'delivered', delivered_at = ? WHERE id = ?",
+);
+
+export const feedbackClaims = {
+  get: (postId, discordId) => stmtGetFeedbackClaim.get(postId, discordId),
+  /** Throws a better-sqlite3 SQLITE_CONSTRAINT_UNIQUE error on a double claim — caller catches it. */
+  create: ({
+    postId,
+    discordId,
+    mcUuid = null,
+    sentiment,
+    rewardLabel = null,
+    commandTemplate = null,
+    wasOnline = false,
+    status,
+    deliveredAt = null,
+  }) =>
+    stmtInsertFeedbackClaim.run({
+      feedback_post_id: postId,
+      discord_id: discordId,
+      mc_uuid: mcUuid,
+      sentiment,
+      reward_label: rewardLabel,
+      command_template: commandTemplate,
+      chosen_at: Date.now(),
+      was_online_at_pick: wasOnline ? 1 : 0,
+      status,
+      delivered_at: deliveredAt,
+    }),
+  queued: () => stmtQueuedFeedbackClaims.all(),
+  markDelivered: (id, deliveredAt = Date.now()) => stmtMarkFeedbackClaimDelivered.run(deliveredAt, id),
 };
 
 export function closeDb() {

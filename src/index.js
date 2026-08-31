@@ -20,6 +20,7 @@ import {
 import { startWhitelistReconciler, stopWhitelistReconciler } from './whitelist.js';
 import { startRoleReconciler, stopRoleReconciler, linkedRoleEnabled } from './roles.js';
 import { startPresencePoller, stopPresencePoller } from './presence.js';
+import { startFeedbackDeliveryPoller, stopFeedbackDeliveryPoller } from './feedbackRewards.js';
 import { isLinkingOpen } from './state.js';
 
 const client = new Client({
@@ -51,6 +52,7 @@ client.once(Events.ClientReady, async (c) => {
   startWhitelistReconciler(client);
   startRoleReconciler(client);
   startPresencePoller(client);
+  startFeedbackDeliveryPoller(client);
   await audit(
     client,
     `✅ Bot online. Linking is ${isLinkingOpen() ? '🟢 open' : '🔴 closed'}.`,
@@ -130,6 +132,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (owner?.handleButton) await owner.handleButton(interaction);
       return;
     }
+    if (interaction.isModalSubmit()) {
+      // route "<commandName>:..." modal ids to that command's handleModal()
+      const owner = commands.get(interaction.customId.split(':')[0]);
+      if (owner?.handleModal) await owner.handleModal(interaction);
+      return;
+    }
+    if (interaction.isStringSelectMenu()) {
+      // route "<commandName>:..." select-menu ids to that command's handleSelectMenu()
+      const owner = commands.get(interaction.customId.split(':')[0]);
+      if (owner?.handleSelectMenu) await owner.handleSelectMenu(interaction);
+      return;
+    }
     if (!interaction.isChatInputCommand()) return;
 
     const command = commands.get(interaction.commandName);
@@ -166,6 +180,7 @@ async function shutdown(signal) {
   stopWhitelistReconciler();
   stopRoleReconciler();
   stopPresencePoller();
+  stopFeedbackDeliveryPoller();
   try {
     await audit(client, '🛑 Bot shutting down.');
   } catch {

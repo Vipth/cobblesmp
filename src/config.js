@@ -118,6 +118,14 @@ export const config = {
     // true = join posts ping the linked member
     mention: bool('PRESENCE_MENTION', false),
   },
+  feedback: {
+    // kill switch: /feedback and its vote/claim buttons are off by default
+    enabled: bool('FEEDBACK_REWARDS_ENABLED', false),
+    // fallback channel when no channel option is given and none is saved
+    channelId: optional('FEEDBACK_CHANNEL_ID', ''),
+    // how often the offline-reward delivery poller runs
+    deliveryIntervalMs: int('FEEDBACK_DELIVERY_INTERVAL_MS', 60_000, { min: 15_000 }),
+  },
   databasePath: optional('DATABASE_PATH', './data/cobblesmp.db'),
   deployCommandsOnStart: bool('DEPLOY_COMMANDS_ON_START', false),
   // /say is rendered via tellraw (not the vanilla `say`, which shows "[Rcon]").

@@ -7,6 +7,7 @@ Discord ↔ Minecraft (Fabric / RCON) bot for CobbleSMP:
 - **Optional link-to-play** — enforce that only linked accounts can join, with a reconciler that keeps the server whitelist in sync with the link table ([details](#require-a-discord-link-to-join-whitelist-enforcement)).
 - **Admin commands over RCON** — `/ban`, `/pardon`, `/kick`, `/give`, `/tp`, `/whitelist`, `/say`, gated to an admin role and audit-logged.
 - **Lookups** — `/mcname @user`, `/discorduser <name>`, `/whoami`, `/list`.
+- **Feedback rewards** (`/feedback`, opt-in) — post a feedback request with optional claimable rewards; players vote and claim, delivered immediately if online or queued until they next log in ([details](#feedback-rewards)).
 
 RCON is console-level (op 4) with a single privilege tier, so **every command that reaches the server is built by the bot from validated slash-command options** — there is no raw passthrough, and non-admins cannot run anything.
 
@@ -88,6 +89,8 @@ cp .env.example .env
 | `BAN_SYNC_INTERVAL_MS` | banlist poll cadence, default `60000` (keep ≥ 60000 on a Pi) |
 | `BAN_SYNC_MODE` | `propose` (default, admin confirms via button) or `auto` |
 | `DEPLOY_COMMANDS_ON_START` | `true` re-registers slash commands on every boot |
+| `FEEDBACK_REWARDS_ENABLED` | `true` turns on `/feedback` and its vote/claim buttons (default `false`) |
+| `FEEDBACK_CHANNEL_ID` | fallback channel for `/feedback` posts (optional; `/feedback` can also save one) |
 
 ## Run locally
 
@@ -161,6 +164,7 @@ If the Pi runs 32-bit Raspberry Pi OS, add `linux/arm/v7` to `--platform`.
 - `/forceunlink <@user | username>` — remove someone else's link
 - `/users [page]` — list every synced account (ephemeral, no pings)
 - `/linking open|close|status` — open or close new `/link` sign-ups (e.g. to stop a rush of new players). Existing links and `/forcelink` are unaffected; persists across restarts.
+- `/feedback [channel] [reset_channel]` — post a feedback request with optional claimable rewards ([details](#feedback-rewards)); off unless `FEEDBACK_REWARDS_ENABLED=true`.
 
 `<target>` accepts a Minecraft username, an `@mention`, or a raw Discord ID.
 
@@ -213,6 +217,33 @@ Set `PRESENCE_CHANNEL_ID` as well and it posts `→ joined` / `← left` / `🎉
 Playtime is approximate — it's "time the bot saw you online", so it undercounts across bot
 restarts or RCON outages and is quantised to the poll interval. Fine for a leaderboard, not
 for anything you'd bill by the hour. Sessions shorter than one poll gap are missed entirely.
+
+## Feedback rewards
+
+Off by default (`FEEDBACK_REWARDS_ENABLED=false`). When enabled, an admin runs `/feedback`,
+which asks for the target channel (an explicit `channel:` option is saved as the new default
+for next time; `reset_channel:true` clears the saved default) and then opens a modal for the
+feedback message and an optional reward list, one per line:
+
+- `<qty> <item_id>` — e.g. `3 minecraft:apple` or `1 examplemod:thors_hammer` — shorthand for
+  an in-game `give`.
+- `cmd:<command>` or `cmd:<label>|<command>` — any RCON command containing the literal
+  placeholder `{player}`, substituted with the claimer's Minecraft username at delivery time.
+  This is how a modded server offers something other than a plain `give` (a custom grant
+  command, a permission node, a crate key, etc.) as a reward.
+
+The bot posts an embed with ⬆️/⬇️ buttons (not raw reactions — Discord can't show a private
+popup in response to a reaction, only to an interaction). Clicking either button records the
+member's feedback; if the post has rewards, it also opens an ephemeral menu to pick one —
+requiring a linked Minecraft account first (`/link`) if not already linked. A reward is
+delivered immediately via RCON if the player is online, or queued and delivered automatically
+the next time they are (checked every `FEEDBACK_DELIVERY_INTERVAL_MS`, default 60s; state is
+read from SQLite each check, so a bot restart never loses a queued reward).
+
+Every claim is logged (reward chosen, when, whether the player was online at pick time, when
+it was actually delivered) and each Discord member — and each underlying Minecraft account —
+can claim only once per feedback post, even across an unlink/relink to a different Discord
+account.
 
 ## Notes / limitations
 
